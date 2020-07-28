@@ -1,0 +1,327 @@
+애플리케이션 개발하기-View및Template코딩
+앞에서 polls애플리케이션을 설계할 때 3개의 페이지가 필요했다.
+이 3개의 페이징를 보여주기 위해 필요한 뷰와 템플릿을 코딩하겠다.
+이를 위해서는 요청에서부터 응답까지의 처리 흐름에 대한 로직이 설계되어야 한다.
+개발자가 어떻게 설계하는냐에 따라 달라지는데,
+여기서는 4개의 URL과 뷰가 필요하다고 판단하고 다음과 같이 설계한다.
+물론 사용자에게 보여지는 페이지가 3개이므로, 3개의 템플릿 파일이 필요하다.
+URL
+/polls/
+/polls/5/
+/polls/5/vote/
+/polls/5/results/
+
+View
+index()
+detail()
+vote()
+results()
+
+Template
+index.html
+detail.html
+results.html
+이를 코딩으로 반영하기 위해 서로 관련 있는 URL과 뷰 및 템플릿을 매핑해야한다.
+
+urls.py작성 //URLconf 내용을 코딩
+views.index() 함수 작성 //index.html 템플릿도 같이 작성
+views.detail() 함수 작성 //detail.html 템플릿도 같이 작성
+views.vote() 함수 작성 //리다이렉션 처리 들어있음
+views.results() 함수 작성 //results.html 템플릿도 같이 작성
+
+--URLconf 코딩
+URLconf 설계 내용에 따르면, Admin 사이트까지 포함해서 5개의 URL과 뷰가 필요하다.
+urls.py
+from django.contrib import admin
+from django.urls import path
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('polls/', views.index, name='index'),
+    path('polls/<int:question_id>/', views.detail, name='detail'),
+    path('polls/<int:question_id>/results/', views.results, name='results'),
+    path('polls/<int:question_id>/vote/', views.vote, name='vote'),
+]
+
+만일 요청의 URL이 /admin/ 이라면 아래 라인이 매칭되고, 장고에서 제공해주는 admin앱의 URL매핑 처리에
+일임한다.
+path('admin/', admin.site.urls)
+
+만일 요청의 URL이 /polls/라면 아래 라인이 매칭되고, URL스트링에서 추출되는 항목이 없으므로
+views.index(request)처럼 뷰 함수가 호출된다. 이 URL 패턴의 이름을 index라고 정했다.
+path('polls/', views.index, name='index')
+
+만일 요청의 URL이 /polls/3/이라면 아래 라인이 매칭되고, URL스트링에서 3이 추출되므로 뷰 함수를 호출 시
+views.detail(request, question_id=3)처럼 인자가 대입된다. 이 URL 패턴의 이름을 detail이라고 정함
+path('polls/<int:question_id>', views.detail, name='detail'),
+
+만일 요청의 URL이 /polls/7/results/라면 아래 라인이 매칭되고, 추출된 7은 파이썬 int타입으로 변환된 후
+뷰 함수를 호출 시 views.results(request, question_id=7)처럼 인자가 대입된다.
+이 URL 패턴의 이름을 results라고 정했다.
+path('polls/<int:question_id>/results/', views.results, name='results')
+
+만일 요청의 URL이 /polls/9/vite/라면 아래 라인이 매칭되고, 뷰 함수를 호출 시 
+view.vote(request, question_id=9)처럼 인자가 대입된다. 이 URL 패턴의 이름을 vote라고 정했다.
+path('polls/<int:question_id>/vote/', views.vote, name='vote'),
+
+추가적으로, mysite/settings.py 파일에 ROOT_URLCONF 항목이 정의된다는 것을 기억해야한다.
+장고는 URL 분석 시, 이 항목에 정의된 urls.py 파일을 가장 먼저 분석하기 시작한다.
+ROOT_URLCONF = 'mysite.urls'
+
+한가지 더 알아두어야 할 사항은 URLconf를 코딩할 때 앞에서처럼 하나의 urlspy파일에 작성할 수도 있고
+다금과 같이 mysite/urls.py와 polls/urls.py 2개의 파일에 작설할 수도 있다.
+
+mysite/urls.py
+from django.contrib import admin
+from django.urls import path, include
+urlpatterns = [
+    path('admin/', admin/site.urls),
+    path('polls/', include('polls.urls')),
+]
+polls/urls.py
+from django.urls import path
+from . import views
+
+app_name = 'polls'
+urlpatterns = [
+    path('', views.index, name='index'), #/polls/
+    path('<int:question_id>/', views.detail, name='detail'), #/polls/5/
+    path('<int:question_id>/results/', views.results, name='results'), #/polls/5/results/
+    path('<int:question_id>/vote/', views.vote, name='vote'), #/polls/vote/
+]
+
+
+
+--뷰 함수 index() 및 템플릿 작성
+poll/templates/polls/index.html
+{% if lastest_question_list %}
+    <ul>
+        {% for question in lastest_question_list %}
+            <li><a href="/polls/{{ question.id }}/">{{ question.question_text }}</a></li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>No polls are available.</p>
+{% endif %}
+latest_question_list 객체는 index()뷰 함수에서 넘겨주는 파라미터이다.
+latest_question_list 객체의 내용을 순회하면서 question_text를 순서 없는 리스트로 화면에 보여준다.
+(<ul>,<li>태그역할). 또한, 각 테스트에 URL 링크를 연결한다.(<a href>속성 역할).
+URL링크는 /polls/3/과 같은 형식이다.
+템플릿 언어인 {% if %}, {% for %}태그 등이 사용되었지만, 간단한 문법이므로 설명은 생략한다.
+여기서 중요한 점은 index.html을 작성하면서 필요한 변수가 무엇인지를 찾아내는 것이다.
+이들 변수는 뷰 함수에서 context변수로 정의해서 템플릿으로 넘겨줘야 하기 때문이다. 
+내 예제의 템플릿에서는 지문으로 사용될 여러 개의 question_text를 화면에 보여줘야 하고,
+URL링크를 연결하기 위해 question.id도 필요하다. 이 두 가지 정보가 함께 들어있는 Question객체를
+뷰 함수로부터 넘겨받으면 된다. 좀 더 정확히는 Question 객체들의 리스트가 들어있는
+latest_question_list변수를 뷰 함수로부터 템플릿 파일로 전달해야 한다.
+이 사항을 index()뷰 함수에 코딩한다.
+
+ch3/poll/views.py
+from django.shortcuts import render
+from polls.models import Question
+# Create your views here.
+def index(request):
+    latest_question_list = Question.object.all().order_by('-pub_date')[:5]
+    context = {'latest_question_list': latest_question_list}
+    return render(request, 'polls/index.html', context)
+1.장고의 단축함수인 render()함수를 임포트한다.
+2.Question테이블에 엑세스하기 위해 polls.models.Question 클래스를 임포트한다.
+3.뷰 함수를 정의한다. request객체는 뷰 함수의 필수 인자이다.
+4.템플릿에게 넘겨줄 객체의 이름은 latest_question_list이다. latest_question_list객체는
+Question테이블 객체에서 pub_date 컬럼의 역순으로 정렬하여 5개의 최근 Question객체를 가져와서 만든다.
+5.템플릿에 넘겨주는 방식은 파이썬 사전 타입으로, 템플릿에 사용될 변수명과 그 변수명에 해당하는 객체를 매핑하는
+사전으로 context변수를 만들어서 이를 render()함수에 보내준다.
+6.render()함수는 템플릿 파일인 polls/index.html에 context변수를 적용하여 사용자에게 보여줄
+최종 HTML텍스트를 만들고, 이를 담아서 HttpResponse객체를 반환한다.
+7.index() 뷰 함수는 최종적으로 클라이언트에게 응답할 데이터인 HttpResponse객체를 반환한다.
+
+장고는 index()함수에서 지정한 polls/index.html을 어떻게 찾을까?
+TEMPLATES, INSTALLED_APPS에서 지정된 디렉토리를 검색한다.
+
+
+
+--뷰 함수 detail() 및 폼 템플릿 작성
+<h1>{{ question.question_text }}</h1>
+{% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+
+<form action="{% url 'polls:vote' question.id %}" method="post">
+{% csrf_token %}
+{% for choice in question.choice_set.all %}
+    <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }}" />
+    <label for="choice{{ forloop.counter }}">{{ choice.choice_text }}</label><br />
+{% endfor %}
+<input type="submit" value="Vote" />
+</form>
+1.질문제목으로 사용하기 위해 폰트 크기를 h1으로 지정
+2.에러가 있으면 에러 메시지를 굵은 글자로 화면에 보여준다. 에러를 체크하는 로직은 다음절의 vote()뷰 함수에 있다.
+vote() 뷰 함수에서 익셉션이 발생하면 error_message를 담아서 detail.html 템플릿을 렌더링하고,
+그에 따라 지금 보고 있는 detail.html 템플릿에서 여러 메시지를 굵은 글자로 보여주게 된다.
+3.폼에 입력된 데이터는 POST방식으로 보낸다. 받는 곳의 URL을 polls:vote로 지정하였다.
+polls:vote는 URLconf에서 정의한 URL패턴 이름이다.
+4.폼을 처리하는 경우 보안 측면에서 CSRF(Cross Site Request Forgery)공격을 주의해야 한다.
+장고에서는 이를 방지하기 위한 기능을 제공하는데, {% csrf_token %} 템플릿 태그를 사용하면 간단히 해결된다.
+<form>태그 다음에 넣어주면 된다.
+5.{% for %} 태그로 뷰 함수에서 넘어온 객체를 순회하고 있다. index()뷰에서처럼 이번 detail() 뷰함수에서도
+Question객체를 템플릿으로 넘겨주고 있다는 것을 예측할 수 있다.
+뷰 함수를 작성할 때는 템플릿에게 무엇을 넘겨줄지는 항상 숙고해야 하는 사항이다
+question.choice_set.all의 의미는 Question객체의 choice_set 속성에 들어있는 항목 모두를 뜻한다.
+6. 라디오 버튼으로 답변 항목을 보여주고 있다. 해당 라디오 버튼을 선택하면, POST데이터가
+'choice'='3' (choice.id) 형태로 구성되도록 name과 value속성을 정의하고 있다.
+7.forloop.counter변수는 for 루프를 실행한 횟수를 담고 있는 템플릿 변수이다.
+<label for>속성과 <input id>속성은 값이 같아야 서로 바인딩된다.
+8.Vote버튼을 클릭하면 사용자가 선택한 폼 데이터가 POST방식으로 polls:vote URL로 전송된다.
+다음 절에서 살펴보겠지만, 전송된 데이터는 vote() 뷰 함수에서 request.POST['choice']구문으로 액세스한다.
+<input>태그의 name과 value속성값들이, request.POST 사전에 key, value로 사용된다는 점을 유의하자
+
+Question객체의 choice_set속성이란
+QUestion과 Choice 테이블의 관계는 1:N 관계이고, 외래키로 연결되어 있다.
+이렇게 1:N 관계에서는 1 테이블에 연결된 N 테이블의 항목들이라는 의미로, xxx_set속성을 디폴트로 제공한다.
+즉, question.choice_set.all()이라고 하면 Question테이블의 question레코드에 연결된
+Choice테이블의 레코드 모두를 뜻한다. 앞의 detail.html예제에서는 템플릿 문법상 메서드 호출을 표시하는
+()를 사용하지 않으므로, question.choice_set.all이라고 표현한 것이다.
+
+여기서 잠시 detail.html파일에서 필요한 변수, 즉 detail() 뷰 함수에서 정의해야 할 context변수가
+어떤게 있는지 찾아보자
+question.text, error_message, question.id, question.choice_set, forloop.counter,
+choice.id, choice.choice_text 등의 변수들이 사용되고 있다.
+forloop.counter는 장고에서 제공하므로 내가 정의할 필요가 없고, error_message는 detail()함수가
+아니므로 vote()함수에서 정의할 예정이다.
+question.text, question.id, question.choice_set 변수들은 각각 컨텍스트 변수로 정의해도되지나,
+question 변수만 정의하면 그 변수의 속성으로 액세서할 수 있으므로 question 컨텍스트 변수 하나만 정의하는 것이
+효율적이다. 또한, choice.id, choice.choice_text변수들도 question.choice_set변수가 정의되면
+액세스 할 수 있다.
+결론적으로 detail() 뷰 함수에서 정의해야 할 컨텍스트 변수는 question 변수 하나로 충분하다는 것을 알 수 있다.
+템플릿 파일과 뷰 함수의 관계에서 컨텐스트 변수를 찾는다는 점을 우선적으로 숙지하자
+html파일을 먼저 코딩하고 컨텍스트 변수를 찾는 중..
+
+화면에 보여줄 템플릿을 작성했으면 이 템플릿을 사용하는 detail() 뷰 함수를 작성하겠다.
+앞에서 작성한 index.html 화면에서 질문 하나를 선태갛면 /polls/1/과 같은 URL이 넘어오게 되어 있다.
+<li><a href="/polls/{{ question.id }}/">{{ question.question_text }}</a></li>
+또한 urls.py에는 이미 다음과 같은 라인을 작성한 바 있다.
+path('<int:question_id>/', views.detail, name='detail'),
+위 두 라인에 의해 사용자가 질문 하나를 선택하면 detail() 뷰 함수가 호출되는 것이다.
+
+이제 view.py파일을 다시 열고 기존의 index() 함수 다음에 아래 내용을 추가하자
+def detail(request, question_id):
+    question = get_object_or_404(Question, pk=question_id)
+    return render(request, 'polls/detail.html', {'question': question})
+
+뷰 함수를 정의한다. request 객체는 필수 인자이고, 추가적으로 question_id인자를 더 받는다.
+get_object_or_404() 단축함수를 사용하고 있다. 이 함수의 첫 번째 인자는 모델 클래스이고
+두 번째 인자부터는 검색 조건을 여러 개 사용할 수 있다. 이 예제에서는 Question 메덜 클래스로부터
+pk=question_id 검색 조건에 맞는 객체를 조회한다. 조건에 맞는 객체가 없으면 Http404 익셉션을 발생시킨다.
+render()함수를 사용한다. 이는 템플릿 파일 polls/detail.html에 컨텍스트 변수를 적용하여
+사용자에게 보여줄 최종 HTML 텍스트를 만들고, 이를 담아서 HttpResopnse 객체를 반환한다.
+템플릿에게 넘겨주는 컨텍스트 사전을 render() 함수의 인자로 직접 써주고 있다.
+템플릿 파일에서는 question이란 변수를 사용할 수 있게 되어있다.
+detail() 뷰 함수는 최종적으로 detail.html의 텍스트 데이터를 담은 HttpResponse 객체를 반환한다.
+
+
+--뷰 함수 vote() 및 리다이렉션 작성
+vote() 뷰 함수의 호출과 연계된 URL은 detail.html 템플릿 파일에서 받는다. 즉 detail.html
+템플릿에 있는 폼을 제출하면 폼의 기능에 의해 /polls/5/vote/와 같은 URL이 POST방식으로 넘어온다.
+detail.html에 있는 아래 라인을 설명하고 있는 것이다.
+<form action="{% url 'polls:vote' question.id %}" method="post">
+또한 urls.py에는 이미 다음과 같은 라인을 작성한 바 있다.
+path('polls/<int:question_id>/vote/', views.vote, name='vote'),
+위 두 라인에 의해 사용자가 Vote버튼을 누르면 vote() 뷰 함수가 호출되는 것이다.
+폼으로부터 수신한 post데이터를 처리하는 vote() 뷰 함수를 작성해보겠다.
+view.py 파일을 열고 vote() 뷰 함수의 내용을 다음과 같이 입력한다.
+def vote(request, question_id):
+    question = get_object_or_404(Question, pk=question_id)
+    try:
+        selected_choice = question.choice_set.get(pk=request.POST['choice'])
+    except (KeyError, Choice.DoesNotExist):
+        # 설문 투표 폼을 다시 보여준다.
+        return render(request, 'polls/detail.html', {
+            'question': question,
+            'error_message': "You didn't select a choice.",
+        })
+    else:
+        selected_choice.votes += 1
+        selected_choice.save()
+        # POST 데이터를 정상적으로 처리하였으면,
+        # 항상 HttpResopnseRedirect를 반환하여 리다이렉션 처리함
+        return HttpResponseRedirect(reverse('polls:results', args=(question.id,)))
+1.뷰함수를 정의한다. request객체는 필수 인자이고, detail() 뷰처럼 question_id인자를 더 받는다.
+2.다음 라인에 의해 vote() 뷰 함수로 인자가 넘어온다.
+path('polls/<int:question_id>/vote/', views.vote, name='vote'),
+3.get_object_or_404() 단축함수를 사용하고 있다. 이번에는 Choice 테이블을 검색하고 있다.
+검색 조건은 pk=request.POST['choice']이다. request.POST는 제출된 데이터를 담고 있는 객체로서,
+파이썬 사전처럼 키로 그 값을 구할 수 있다. request.POST['choice']는 폼 데이터에서 키가 'choice'에 해당하는
+값인 choice.id를 스트링으로 리턴한다.
+4.폼의 POST 데이터에서 'choice'라는 키가 없으면 KeyError 익셉션을 발생시킨다.
+또는 검색 조건에 맞는 객체가 없으면 Choice.DoesNotExist익셉션이 발생한다.
+5.익셉션이 발생하면 render()함수에 의해서 question과 error_message컨텍스트 변수를 detail.html템플릿으로 전달한다.
+그 결과 사용자에게는 에러 메시지와 함께 질문 항목 폼을 다시 보여줘서 데이터를 재입력할 수 있도록 한다.
+6.다음은 익셉션이 발생하지 않고 정상 처리하는 경우이다.
+7.Choice객체.votes 속성, 즉 선택 카운트를 +1 증가시킨다.
+8.변경사항을 해당 Choice 테이블에 저장한다.
+9.이번에는 vote() 뷰 함수가 반환하는 객체는 HttpResopnse가 아니라 HttpResponseRedirect이다.
+HttpResponseRedirect 객체의 생성자는 리다이렉트할 타겟 URL을 인자로 받는다. 
+타겟 URL은 reverse()함수로 만든다. 뒤에서 추가적으로 본다.
+10. 최종적으로 vote() 뷰 함수는 리다이렉트할 타겟 URL을 담은 HttpResopnseRedirect객체를 반환한다.
+이 처럼 웹 프로그램에서 POST 방식의 폼 데이터를 처리하는 경우, 그 결과를 보여줄 수 있는 페이지로 이동시키기 위해
+HttpResopnseRedirect객체를 리턴하는 것이 일반적이다.
+
+추가적으로 reverse() 함수를 자세히 알아본다. URLconf는 일반적으로 URL 스트링과 뷰를 매핑한 
+각 라인을 URL 패턴이라 하고 이름을 하나씩 부여한다. 그런데 그 반대 방향으로 reverse() 함수를 사용하여
+URL 패턴명으로 URL 스트링을 구할 수도 있다. reverse() 함수의 인자로는 아래처럼, URL패턴의 이름과 URL 스트링에
+사용될 파라미터, 2개의 인자를 받는다.
+reverse('polls:results', args=(question_id,))
+
+
+
+--뷰 함수 reuslts() 및 템플릿 작성
+results() 뷰 함수의 호출과 연계된 URL은 votes() 뷰 함수의 리다이렉트 결과로 받는다. 즉,
+폼 데이터를 처리한 후에 그 결과를 보여주는 페이지로 리다이렉트시켜주기 위해 votes() 뷰 함수에서 
+다음 라인을 실행했다. 리다이렉트할 타깃 URL은 /polls/3/results와 유사한 모습일거다.
+return HttpResopnseRedirect(reverse('polls:results', args=(question_id,)))
+
+리다이렉트하라는 응답을 받은 웹 브라우저는 리다이렉트 URL로 다시 요청을 보낸다.
+또한, urls.py에는 이미 다음과 같은 라인을 작성한 바 있다.
+path('polls/<int:question_id>/results/', views.results, name='results'),
+
+위 두 라인에 의해 results() 뷰 함수가 호출된다. 이제 results() 뷰 함수에 폼 데이터 처리 결과를 보여주는
+로직을 작성하겠다. 앞에서는 템플릿 파일을 먼저 ㅎ코딩하고 그 이후에 뷰 함수를 코딩하였지만,
+이번에는 뷰를 먼저 코딩한 다음에 템플릿을 코딩한다. 순서는 상관이 없다.
+def results(request, question_id):
+    question = get_object_or_404(Question, pk=question_id)
+    return render(request, 'polls/results.html', {'question': question})
+뷰 함수를 정의한다. 첫 번째 request 객체는 필수 인자이고, 두 번째 question_id 인자는 다음 라인의 실행 결과로
+넘어온다.
+path('polls/<int:question_id>/results/', views.results, name='results'),
+두 라인은 템플릿 파일명만 제외하고 detail() 함수와 동일하다.
+get_object_or_404() 단축하수를 사용하고 있다. Question 모델 클래스로부터 pk=question_id검색조건에
+맞는 객체를 조회한다. 조건에 맞는 객체가 없으면 Http404익셉션을 발생시킨다.
+render() 함수를 사용했다. 템플릿으로 question 변수를 넘겨주는 것은 동일하지만 템플릿 파일이 다르므로,
+사용자에게 보여주는 화면은 달라진다.
+results() 뷰 함수는 최종적으로 results.html 템플릿 코드를 렌더링한 결과인 HTML 텍스트 데이터를 담은
+HttpResopnse 객체를 반환한다.
+뷰 함수를 만들었으니 뷰 함수에서 사용하는 템플릿을 코딩하겠다. 이번 템플릿의 목표는 투표 결과로, 각 질문마다
+투표 카운트를 보여주는 화면을 만드는 것이다. 최종 결과 UI화면은 앞에서 설계한 것처럼 다음과 같다.
+<h1>{{ question.question_text }}</h1>
+<ul>
+    {% for choice in question.choice_set.all %}
+        <li>{{ choice.choice_text }} -- {{ choice.votes }} vote{{ choice.votes|pluralize }}</li>
+    {% endfor %}
+</ul>
+<a href="{% url 'polls:detail' question.id %}">Vote again?</a>
+1.질문을 제목으로 사용하기 위해 폰트 크기를 h1으로 설정하였다. question 템플릿 변수는 results() 뷰 함수로에서
+넘겨준 컨텍스트 변수로, Question 클래스 타이브이 객체를 담고 있다.
+2.뷰 함수에서 넘어온 question 변수를 이용하여 {% for %} 태그로 Choice 객체를 순회하고 있다.
+question.choice_set.all의 의미는 Question 객체의 choice_set속성에 들어있는 항목, 즉 Choice객체
+모두를 뜻한다.
+3.Choice 객체의 choice_text를 순서 없는 리스트로 화면에 보여준다.(<ul>, <li> 태그 역할), 또한, 각 텍스트
+옆에 투표 카운트(choice.votes)를 숫자로 보여준다. vote{{ choice.votes|pluralize }}의 의미는 
+choice.votes 값에 따라 복수 접미사(s)를 붙여주는 것이다. 결과적으로 choice.votes값에 따라 vote 또는votes
+가 표시된다.
+4.vote again? 이라는 문장을 보여주고, 그 문장에 URL 링크를 연결한다.(<a href> 속성역할),
+URL 링크는 {% url %} 태그를 사용하여 /polls/3/과 같은 형식으로 만들어준다.
+
+한 가지 흥미로운 점은 뷰 함수와 템플릿 태그 양쪽에서 모두 URL 스트링을 추출할 수 있다는 것이다.
+뷰 함수에서는 reverse() 함수를 사용하고, 템플릿에서는 {% url %} 태그를 사용한다.
+이번 예제에서 보았던 템플릿 태그와 동일한 URL 스트링을 추출하도록 뷰 함수의 reverse() 함수를 사용해서 
+표현해보면 다음과 같다.
+{% url 'polls:detail' question.id %} //템플릿에서 사용됨
+reverse('polls:detail', args=(question_id,)) //뷰 함수에서 사용됨

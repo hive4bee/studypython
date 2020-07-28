@@ -1,0 +1,98 @@
+django-admin startproject mysite //mysite라는 프로젝트를 생성한다.
+python manage.py startapp polls //polls라는 애플리케이션을 생성한다.
+vi settings.py //설정 파일을 확인 및 수정한다.
+python manage.py migrate //데이터베이스에 기본 테이블을 생성한다.
+python manage.py runserver //현재까지 작업을 개발용 웹 서버로 확인한다.
+
+--mkdir redbook
+cd redbook
+
+--프로젝트 생성
+django-admin startproject mysite
+mysite라는 최상위와 그하위에 manage.py, mysite디렉토리가 생기는데
+하위 mysite 디렉토리는 프로젝트 디렉토리이고 상위 mysite 디렉토리는 프로젝트 관련
+디렉토리/파일을 모으는 역할만 하는 디렉토리이다.
+따라서 상위 mysite디렉토리는 특별한 의미를 가지고 있지 않기 때문에 이름을 변경해준다.
+mv mysite ch3
+mysite 하위에는 
+asgi.py, __init__.py, __pycache__, settings.py urls.py, wsgi.py
+등이 생겨난다.
+
+--애플리케이션 생성
+python manage.py startapp polls
+이 명령을 실행하면 polls 디렉토리가 생긴다.
+polls 하위에는
+admin.py, apps.py, __init__.py, migrations, models.py, tests.py, views.py
+등이 생겨난다.
+
+--프로젝트 설정 파일 변경
+프로젝트에 필요한 설정들은 settings.py파일에 지정한다.
+settings.py파일은 프로젝트의 전반적인 사항들을 설정해주는 곳으로, 루트 디렉토리를 포함한
+각종 디렉토리의 위치, 로그의 형식, 프로젝트에 포함된 애플리케이션의 이름 등이 지정되어 있다.
+
+네 가지만 확인해보자
+
+첫 번째로 ALLOWED_HOSTS 항목을 적절하게 지정해야 한다.
+장고는 DEBUG=True이면 개발모드로, False이면 운영 모드로 인식한다.
+운영 모드인 경우는 ALLOWED_HOSTS에 반드시 서버의 IP나 도메인을 지정해야 하고,
+개발 모드인 경우에는 값을 지정하지 않아도 localhost, 127.0.0.1로 인식한다.
+지금은 개발 모드이고 장고의 runserver를 기동할 서버의 IP가 127.0.0.1뿐만 아니라
+192.168.134.128일 수도 있다면 아래와 같이 지정한다.
+ALLOWED_HOSTS = ['192.168.134.128','localhost','127.0.0.1']
+
+두 번째로 프로젝트에 포함되는 애플리케이션들은 모두 설정 파일에 등록되어야 한다.
+따라서 내가 개발하고 있는 polls 애플리케이션도 등록해야 한다. 
+애플리케이션을 등록할 때는 간단하게 애플리케이션의 모듈명인 polls만 등록해도 되지만,
+애플리케이션의 설정 클래스로 등록하는 것이 더 정확한 방법이다.
+polls앱의 설정 클래스는 startapp polls 명령 시에 자동 생성된 apps.py 파일에 
+PollsConfig라고 정의되어 있다. 그래서 장고가 설정 클래스를 찾을 수 있도록
+INSTALLED_APPS에 다음을 추가해야한다.
+모듈 경로까지 포함하여 'polls.apps.PollsConfig'라고 등록한다.
+
+세 번째로 프로젝트에 사용할 데이터베이스 엔진이다. 장고는 디폴트로 SQLite3 데이터베이스
+엔진을 사용하도록 설정되어 있다. 물론 다른 데이터베이스 엔진으로 변경할 수도 있다.
+만일 MySQL이나 Oracle, PostgreSQL 등 다른 데이터베이스로 변경하고 싶다면
+settings.py파일에서 수정해주면 된다. 내 예제는 SQLite3 데이터베이스를 사용할 것이다.
+
+네 번째는 타임존 지정이다. 최초에는 세계표준시(UTC)로 되어 있는데, 한국 시간으로 변경한다.
+TIME_ZONE = 'Asia/Seoul'
+
+--기본 테이블 생성
+migrate명령은 데이터베이스 변경사항이 있을 때 이를 반영해주는 명령이다.
+python manage.py migrate
+그런데 아직 데이터베이스 테이블을 만들지도 않았는데, 왜 이 명령이 필요할까?
+장고는 모든 웹 프로젝트 개발 시 반드시 사용자와 그룹 테이블 등이 필요하다는 가정 하에
+설계되었다. 그래서 내가 테이블을 전혀 만들지 않았더라도, 사용자 및 그룹 테이블 등을
+만들어 주기 위해서 프로젝트 개발 시작 시점에 이 명령을 실행하는 것이다.
+명령을 실행하면 migrate명령에 대한 로그가 보이고, 실행 결과로 SQLite3데이터베이스
+파일인 db.sqlite3 파일이 생성된 것을 확인할 수 있다.
+
+--지금까지 작업 확인하기
+지금까지 프로젝트 뼈대에 해당하는 프로젝트 디렉토리, 애플리케이션 디렉토리를 비록해
+관련 파일들 그리고 사용자 및 그룹 테이블을 만들었다.
+이러한 작업만으로도 장고가 제공해주는 웹 페이지와 테이블을 확인할 수 있다.
+확인을 위해 웹 서버를 실행하고, 그 웹 서버에 접속해본다.
+장고에서는 개발 과정 도중에 현재 상태를 확인해볼 수 있도록 runserver라고
+하는 간단한 테스트용 웹 서버를 제공해준다.
+웹 서버를 실행하기 위해서 다음 명령을 입력한다.
+python manage.py runserver 0.0.0.0:8000 //또는  0:8000
+
+이제 장고에서 기본적으로 제공하는 admin 사이트에 접속해서 테이블이 생성된 것을 확인해보겠다.
+웹 브라우저의 주소창에 다음과 같이 입력한다.
+IP주소와 포트번호는 앞에서와 동일하고, URL경로만 /admin으로 변경한다.
+http://127.0.0.1:8000/admin
+
+로그인하려면 username, password를 넣어야 하는데 아직 생성하지 않았다
+그러므로 admin 사이트에 로그인하기 위한 관리자(슈퍼유저)를 만들어 보자
+
+python manage.py createsuperuser
+
+관리자 유저를 만들고
+/admin페이지에서 로그인을 시도하면 성공적으로 완료되는 것을 확인할 수 있고
+장고에서 만들어준 Users와 Groups테이블이 생성된 것을 확인할 수 있다.
+
+이 Admin 사이트에서 Users와 Groups 테이블을 포함하여 앞으로 만들 테이블에 대한
+데이터의 입력, 변경, 삭제 등의 작업을 할 수 있다. 한 가지 설명을 덧붙이자면 admin화면에서
+기본적으로 Users와 Groups테이블이 보이는 것은 이미 settings.py파일에 
+django.contrib.auth애플리케이션이 등록되어 있기 때문이다. 즉 장고에서 기본적으로
+제공하는 auth앱에 Users와 Groups 테이블이 미리 정의도어 있는 것이다.
